@@ -1,0 +1,141 @@
+/* ==========================================================================
+   Minimal & Effective Styles for Scrabble Game
+   ========================================================================== */
+
+/* --- Google Font Import --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+/* --- Variables --- */
+:root {
+  --font-family: 'Poppins', Arial, sans-serif;
+  --bg: #f7f1e3;
+  --container-bg: #fff;
+  --board-bg: #c8ad7f;
+  --tile-bg: #fffbe8;
+  --text: #4b4b4b;
+  --primary: #27ae60;
+  --primary-hover: #2ecc71;
+  --shadow: rgba(0,0,0,0.1);
+  --cell-size: 38px;
+  --gap: 3px;
+}
+
+/* --- Base --- */
+body {
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: var(--font-family);
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1,h2,h3 { margin: 0; text-align: center; font-weight: 600; color:#2c3e50; }
+h1 { font-size: 2.2rem; margin-bottom: 20px; }
+h2 { font-size: 1.5rem; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+h3 { font-size: 1.1rem; margin-bottom: 12px; }
+
+/* --- Buttons & Inputs --- */
+button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .2s;
+}
+button:hover { background: var(--primary-hover); }
+button:disabled { background: #bdc3c7; cursor: not-allowed; }
+input, select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- Containers --- */
+.main-container {
+  max-width: 1200px;
+  width: 100%;
+  background: var(--container-bg);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px var(--shadow);
+}
+.board-and-scores { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; }
+
+/* --- Board with Headers --- */
+.board-grid {
+  display: grid;
+  grid-template-columns: var(--cell-size) repeat(15, var(--cell-size));
+  grid-template-rows: var(--cell-size) repeat(15, var(--cell-size));
+  gap: var(--gap);
+  background: #a08c6a;
+  padding: 8px;
+  border: 4px solid #5d4a36;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.corner-cell { background: transparent; }
+.index-cell {
+  display:flex; align-items:center; justify-content:center;
+  font-weight: 700; font-size: .9rem;
+  background: #f0e6d2; color: #5d4a36;
+  border: 1px solid #e0dccc; border-radius: 4px;
+}
+.board-grid .cell {
+  display:flex; align-items:center; justify-content:center;
+  font-weight:bold; font-size:1rem; text-transform:uppercase;
+  background: var(--board-bg); color: white;
+  border-radius: 4px; position:relative;
+}
+.cell:not(:empty) {
+  background: var(--tile-bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+.cell:not(:empty)::before { display:none; }
+
+/* --- Premium Squares --- */
+.premium-2 { background:#a2d5f2; } .premium-2::before { content:'2L'; }
+.premium-3 { background:#5f9ea0; } .premium-3::before { content:'3L'; }
+.premium-4 { background:#ffb6b9; } .premium-4::before { content:'2W'; }
+.premium-5 { background:#ff6b6b; } .premium-5::before { content:'3W'; }
+
+/* --- Player Area --- */
+.scores-container, .player-letters, .word-input {
+  background:#f8f9fa; padding:15px; border-radius:10px; border:1px solid #e9ecef;
+}
+.player-score { font-weight:600; margin-bottom:6px; }
+.active-player { background: var(--primary); color:#fff; border-radius:6px; padding:6px; }
+
+/* --- Letter Tiles --- */
+.letters-list { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:12px; }
+.letter {
+  background: var(--tile-bg); border:1px solid #e0dccc;
+  width:40px; height:40px; border-radius:6px;
+  display:flex; justify-content:center; align-items:center;
+  font-size:1.2rem; font-weight:700; color:var(--text);
+  position:relative; box-shadow: 0 2px 3px var(--shadow);
+}
+.letter-score {
+  position:absolute; bottom:3px; right:4px; font-size:.7rem; font-weight:600;
+}
+
+/* --- Responsive --- */
+@media (max-width:768px) {
+  .cell { font-size:.9rem; }
+  .letter { width:32px; height:32px; font-size:1rem; }
+}
+@media (max-width:500px) {
+  .cell { font-size:.75rem; }
+  .letter { width:28px; height:28px; }
+}
