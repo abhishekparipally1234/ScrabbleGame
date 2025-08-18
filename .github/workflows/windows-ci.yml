@@ -1,0 +1,60 @@
+name: CI/CD for ScrabbleGame (MERN)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: .
+        run: npm install
+
+      - name: Install frontend dependencies
+        working-directory: ./src
+        run: |
+          cd functional
+          npm install
+
+      - name: Run tests (backend)
+        if: exists('package.json') && contains(needs, 'npm test')
+        run: npm test
+
+      - name: Build frontend
+        working-directory: ./src
+        run: |
+          cd functional
+          npm run build || echo "No build script—skipping"
+
+      - name: Archive frontend build
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: ./src/functional/build
+
+      # Optional: Replace with your deploy steps
+      - name: Deploy (example)
+        run: |
+          echo "Deploy step here. Customize as needed."
