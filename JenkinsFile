@@ -1,54 +1,34 @@
 pipeline {
     agent any
 
-    environment {
-        NODE_HOME = "C:\\Program Files\\nodejs"  // adjust if Node is elsewhere
-        PATH = "${env.NODE_HOME};${env.PATH}"
+    tools {
+        nodejs 'NodeJS_24'  // Must match the name from Global Tool Configuration
     }
 
     stages {
         stage('Checkout') {
-            steps {
-                // Clone your GitHub repository
-                git 'https://github.com/abhishekparipally1234/ScrabbleGame.git'
-            }
+            steps { git 'https://github.com/YOUR_USERNAME/YOUR_REPO.git' }
         }
 
         stage('Install Dependencies') {
-            steps {
-                // Install Node.js dependencies
-                bat 'npm install'
-            }
+            steps { bat 'npm ci' }
         }
 
         stage('Build') {
-            steps {
-                // Build React app
-                bat 'npm run build'
-            }
+            steps { bat 'npm run build' }
         }
 
         stage('Run Tests') {
-            steps {
-                // Run Node/React tests
-                bat 'npm test -- --watchAll=false'
-            }
+            steps { bat 'npm test -- --watchAll=false --ci' }
         }
 
         stage('Archive Artifacts') {
-            steps {
-                // Archive the build folder for deployment
-                archiveArtifacts 'build/**'
-            }
+            steps { archiveArtifacts 'build/**' }
         }
     }
 
     post {
-        success {
-            echo 'Build and tests succeeded!'
-        }
-        failure {
-            echo 'Build or tests failed.'
-        }
+        success { echo 'Build and tests succeeded!' }
+        failure { echo 'Build or tests failed. Check console logs.' }
     }
 }
