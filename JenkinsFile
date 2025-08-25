@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+
+    environment {
+        NODE_HOME = "C:\\Program Files\\nodejs"  // adjust if Node is elsewhere
+        PATH = "${env.NODE_HOME};${env.PATH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Clone your GitHub repository
+                git 'https://github.com/abhishekparipally1234/ScrabbleGame.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                // Install Node.js dependencies
+                bat 'npm install'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Build React app
+                bat 'npm run build'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                // Run Node/React tests
+                bat 'npm test -- --watchAll=false'
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                // Archive the build folder for deployment
+                archiveArtifacts 'build/**'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build and tests succeeded!'
+        }
+        failure {
+            echo 'Build or tests failed.'
+        }
+    }
+}
