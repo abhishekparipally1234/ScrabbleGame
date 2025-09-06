@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     tools {
-        nodejs "Node24"  // configure Node.js in Jenkins (Manage Jenkins > Global Tool Configuration)
+        // Configure Node.js 22.18.0 in Jenkins (Manage Jenkins > Global Tool Configuration)
+        nodejs "Node22"
     }
 
     environment {
         BACKEND_DIR = "backend"
-        FRONTEND_DIR = "frontend"
+        FRONTEND_DIR = "scrabbleapp"
     }
 
     stages {
@@ -54,17 +55,20 @@ pipeline {
                 dir("${FRONTEND_DIR}") {
                     sh 'npm run build'
                 }
-                // Optional: copy React build into backend
-                sh "cp -r ${FRONTEND_DIR}/build/* ${BACKEND_DIR}/public/"
+                // Optional: copy React build into backend/public
+                sh "mkdir -p ${BACKEND_DIR}/public && cp -r ${FRONTEND_DIR}/build/* ${BACKEND_DIR}/public/"
             }
         }
 
         stage('Dockerize & Deploy') {
             steps {
                 script {
-                    // Example: Build Docker image and push to registry
+                    // Example: Build Docker image and tag it
                     sh "docker build -t scrabblegame:latest ."
-                    // For real deployments, you'd push to DockerHub/ECR/GCP and then deploy
+                    
+                    // If you have DockerHub:
+                    // sh 'docker tag scrabblegame:latest your-dockerhub-username/scrabblegame:latest'
+                    // sh 'docker push your-dockerhub-username/scrabblegame:latest'
                 }
             }
         }
@@ -75,10 +79,10 @@ pipeline {
             archiveArtifacts artifacts: '**/build/**', allowEmptyArchive: true
         }
         success {
-            echo "✅ MERN pipeline executed successfully!"
+            echo "✅ Scrabble MERN pipeline executed successfully!"
         }
         failure {
-            echo "❌ MERN pipeline failed!"
+            echo "❌ Pipeline failed!"
         }
     }
 }
