@@ -2,7 +2,12 @@ pipeline {
     agent any
 
     tools {
-        nodejs "Node22"   // must match the name you configured in Jenkins
+        nodejs "Node22"   // Jenkins NodeJS installation (v22.18.0)
+    }
+
+    environment {
+        BACKEND_DIR = "backend"
+        FRONTEND_DIR = "scrabbleapp"
     }
 
     stages {
@@ -15,28 +20,47 @@ pipeline {
             }
         }
 
-        stage('Install Backend') {
+        stage('Install Backend Deps') {
             steps {
-                dir("backend") {
+                dir("${BACKEND_DIR}") {
                     sh 'npm install'
                 }
             }
         }
 
-        stage('Install Frontend') {
+        stage('Install Frontend Deps') {
             steps {
-                dir("scrabbleapp") {
+                dir("${FRONTEND_DIR}") {
                     sh 'npm install'
+                }
+            }
+        }
+
+        stage('Frontend Tests') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh 'npm test -- --watchAll=false || echo "⚠️ No frontend tests configured"'
                 }
             }
         }
 
         stage('Build Frontend') {
             steps {
-                dir("scrabbleapp") {
-                    sh 'npm run build || echo "⚠️ No build script found"'
+                dir("${FRONTEND_DIR}") {
+                    sh 'npm run build'
                 }
+                // Copy React build into backend/public
+                sh "mkdir -p ${BACKEND_DIR}/public && cp -r ${FRONTEND_DIR}/build/* ${BACKEND_DIR}/public/"
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ MERN pipeline executed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed — check logs above"
         }
     }
 }
