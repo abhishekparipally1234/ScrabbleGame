@@ -9,15 +9,15 @@ pipeline {
     stages {
         stage('Check Node') {
             steps {
-                sh 'node -v'
-                sh 'npm -v'
+                bat 'node -v'
+                bat 'npm -v'
             }
         }
 
         stage('Backend Install') {
             steps {
                 dir("${BACKEND_DIR}") {
-                    sh 'npm install'
+                    bat 'npm install'
                 }
             }
         }
@@ -25,8 +25,8 @@ pipeline {
         stage('Frontend Install & Build') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    bat 'npm install'
+                    bat 'npm run build'
                 }
             }
         }
