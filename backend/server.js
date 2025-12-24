@@ -64,6 +64,39 @@ app.get('/api/words', (req, res) => {
     res.sendFile(dictionaryPath);
 });
 
+// New endpoint: generate dictionary words that can be formed by given letters
+app.get('/api/bot-words', (req, res) => {
+    const letters = req.query.letters;
+    if (!letters) return res.json([]);
+
+    const rack = letters.toLowerCase().split('');
+
+    // frequency map for rack
+    const freq = {};
+    for (const ch of rack) freq[ch] = (freq[ch] || 0) + 1;
+
+    const results = [];
+
+    // DFS through trie
+    const dfs = (node, path) => {
+        if (path.length >= 2 && node.isEndOfWord) {
+            results.push(path);
+        }
+        for (const ch in node.children) {
+            if (freq[ch] > 0) {
+                freq[ch]--;
+                dfs(node.children[ch], path + ch);
+                freq[ch]++;
+            }
+        }
+    };
+
+    dfs(dictionaryTrie.root, '');
+
+    res.json(results);
+});
+
+
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });

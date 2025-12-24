@@ -1,41 +1,39 @@
 import { isValidPlacement, calculateScore, BOARD_SIZE } from './gameUtils';
 
 export const botLogic = {
-  findBestMove: (board, letters, trie) => {
+  findBestMove: async (board, letters) => {
     let bestMove = null;
     let bestScore = -1;
 
-    const getPermutations = (arr) => {
-      const out = new Set();
-      const rec = (cur, rem) => {
-        if (cur.length > 1) out.add(cur.join(''));
-        if (!rem.length) return;
-        for (let i = 0; i < rem.length; i++) {
-          const next = [...rem.slice(0, i), ...rem.slice(i + 1)];
-          rec([...cur, rem[i]], next);
-        }
-      };
-      rec([], arr);
-      return [...out];
-    };
+    // 1. Ask backend for dictionary-valid words from rack letters
+    const resp = await fetch(
+      `http://localhost:5000/api/bot-words?letters=${letters.join('')}`
+    );
+    const validWords = await resp.json();
 
-    const words = getPermutations(letters).filter((w) => trie.search(w));
+    if (!validWords.length) return null;
 
-    for (const w of words) {
+    // 2. Try every valid word on the board
+    for (const w of validWords) {
+      const word = w.toUpperCase();
+
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
-          for (const dir of ['horizontal', 'vertical']) {
-            if (isValidPlacement(board, w, r, c, dir, letters)) {
-              const score = calculateScore(board, w, r, c, dir);
+          for (const dir of ["horizontal", "vertical"]) {
+
+            if (isValidPlacement(board, word, r, c, dir, letters)) {
+              const score = calculateScore(board, word, r, c, dir);
+
               if (score > bestScore) {
                 bestScore = score;
-                bestMove = { word: w, row: r, col: c, direction: dir, score };
+                bestMove = { word, row: r, col: c, direction: dir, score };
               }
             }
           }
         }
       }
     }
+
     return bestMove;
   },
 };

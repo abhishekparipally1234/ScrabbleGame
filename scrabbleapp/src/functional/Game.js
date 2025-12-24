@@ -24,7 +24,7 @@ function Game({ gameMode }) {
   const [direction, setDirection] = useState('horizontal');
   const [isValidating, setIsValidating] = useState(false);
 
-  // Setup: build tile bag, shuffle, deal racks
+  // Load tile bag + players
   useEffect(() => {
     const bag = [];
     for (const letter in TILE_DISTRIBUTION) {
@@ -66,7 +66,7 @@ function Game({ gameMode }) {
     setTileBag(tempBag);
   }, [gameMode]);
 
-  // End turn: remove used letters, draw same count, next player
+  // End player turn + draw tiles
   const endTurn = useCallback(
     (lettersPlaced) => {
       const drawCount = lettersPlaced.length;
@@ -92,7 +92,7 @@ function Game({ gameMode }) {
     [currentPlayerIndex, players.length, tileBag]
   );
 
-  // Place word
+  // === HUMAN MOVE ===
   const handlePlaceWord = async () => {
     if (!word) return;
     setIsValidating(true);
@@ -108,7 +108,7 @@ function Game({ gameMode }) {
 
       const cur = players[currentPlayerIndex];
       if (!isValidPlacement(board, word, row, col, direction, cur.letters)) {
-        alert('Invalid placement: must connect to existing tiles and you must have the required letters.');
+        alert('Invalid placement: touching rules or rack constraints failed.');
         return;
       }
 
@@ -118,9 +118,9 @@ function Game({ gameMode }) {
       const lettersPlaced = [];
 
       for (let i = 0; i < word.length; i++) {
-        // ✅ Horizontal => advance **column**. Vertical => advance **row**.
         const r = direction === 'horizontal' ? row : row + i;
         const c = direction === 'horizontal' ? col + i : col;
+
         if (newBoard[r][c] === null) {
           newBoard[r][c] = word[i].toUpperCase();
           lettersPlaced.push(word[i].toUpperCase());
@@ -129,32 +129,85 @@ function Game({ gameMode }) {
 
       setBoard(newBoard);
       setPlayers((prev) =>
-        prev.map((p, idx) => (idx === currentPlayerIndex ? { ...p, score: p.score + score } : p))
+        prev.map((p, idx) =>
+          idx === currentPlayerIndex ? { ...p, score: p.score + score } : p
+        )
       );
       endTurn(lettersPlaced);
       setWord('');
     } catch (err) {
-      console.error('Validation/place error', err);
-      alert('Could not connect to the game server. Please ensure it is running.');
+      alert('Could not contact dictionary server.');
     } finally {
       setIsValidating(false);
     }
   };
 
-  // Bot currently skipped (until backend validate is used inside bot)
+  // === BOT TURN HANDLER ===
   useEffect(() => {
-    if (!players.length) return;
+    const playBotMove = async () => {
+      const p = players[currentPlayerIndex];
+      if (!p || p.type !== 'bot') return;
+
+      // 1. Find best move
+      const best = await botLogic.findBestMove(board, p.letters);
+
+      if (!best) {
+        alert(`Bot ${p.id} passes (no valid moves).`);
+        endTurn([]);
+        return;
+      }
+
+      // 2. Validate word with backend
+      const resp = await fetch(`http://localhost:5000/api/validate-word/${best.word}`);
+      const data = await resp.json();
+
+      if (!data.isValid) {
+        alert(`Bot tried invalid word '${best.word}'`);
+        endTurn([]);
+        return;
+      }
+
+      // 3. Validate placement with local logic
+      if (!isValidPlacement(board, best.word, best.row, best.col, best.direction, p.letters)) {
+        alert(`Bot placed word illegally.`);
+        endTurn([]);
+        return;
+      }
+
+      // 4. Apply board update
+      const newBoard = board.map((r) => [...r]);
+      const lettersPlaced = [];
+
+      for (let i = 0; i < best.word.length; i++) {
+        const r = best.direction === 'horizontal' ? best.row : best.row + i;
+        const c = best.direction === 'horizontal' ? best.col + i : best.col;
+
+        if (newBoard[r][c] === null) {
+          newBoard[r][c] = best.word[i].toUpperCase();
+          lettersPlaced.push(best.word[i].toUpperCase());
+        }
+      }
+
+      setBoard(newBoard);
+
+      setPlayers((prev) =>
+        prev.map((pl, idx) =>
+          idx === currentPlayerIndex ? { ...pl, score: pl.score + best.score } : pl
+        )
+      );
+
+      endTurn(lettersPlaced);
+    };
+
     const p = players[currentPlayerIndex];
     if (p?.type === 'bot') {
-      alert('Bot move skipped (needs backend validation).');
-      endTurn([]);
+      setTimeout(playBotMove, 800); // small delay
     }
   }, [players, currentPlayerIndex, board, endTurn]);
 
   const currentPlayer = players[currentPlayerIndex];
-  if (!currentPlayer) return <div>Setting Up Game...</div>;
+  if (!currentPlayer) return <div>Loading game...</div>;
 
-  // For header labels
   const indices = Array.from({ length: BOARD_SIZE }, (_, i) => i);
 
   return (
@@ -164,32 +217,21 @@ function Game({ gameMode }) {
       <div className="content-container">
         <div className="board-and-scores">
           <div className="board-container">
-            {/* === Board with row/column indices === */}
             <div className="board-grid">
-              {/* Corner index (top-left) */}
-              <div className="corner-cell" aria-hidden />
+              <div className="corner-cell" />
 
-              {/* Column headers */}
               {indices.map((c) => (
-                <div key={`col-${c}`} className="index-cell" title={`Column ${c}`}>
-                  {c}
-                </div>
+                <div key={c} className="index-cell">{c}</div>
               ))}
 
-              {/* Grid rows */}
               {indices.map((r) => (
-                <React.Fragment key={`r-${r}`}>
-                  {/* Row header */}
-                  <div className="index-cell" title={`Row ${r}`}>
-                    {r}
-                  </div>
+                <React.Fragment key={r}>
+                  <div className="index-cell">{r}</div>
 
-                  {/* Cells */}
                   {indices.map((c) => (
                     <div
-                      key={`cell-${r}-${c}`}
+                      key={`${r}-${c}`}
                       className={`cell premium-${PREMIUM_SQUARES[r][c]}`}
-                      title={`r${r}, c${c}`}
                     >
                       {board[r][c]}
                     </div>
@@ -201,12 +243,9 @@ function Game({ gameMode }) {
 
           <div className="scores-container">
             <h2>Scores</h2>
-            {players.map((player, index) => (
-              <div
-                key={player.id}
-                className={`player-score ${index === currentPlayerIndex ? 'active-player' : ''}`}
-              >
-                Player {player.id} ({player.type}): {player.score}
+            {players.map((p, i) => (
+              <div key={p.id} className={i === currentPlayerIndex ? 'active-player' : ''}>
+                Player {p.id} ({p.type}) — {p.score}
               </div>
             ))}
           </div>
@@ -218,8 +257,8 @@ function Game({ gameMode }) {
               Player {currentPlayer.id}'s Turn ({currentPlayer.type})
             </h3>
             <div className="letters-list">
-              {currentPlayer.letters.map((letter, index) => (
-                <div key={index} className="letter">
+              {currentPlayer.letters.map((letter, i) => (
+                <div key={i} className="letter">
                   {letter}
                   <span className="letter-score">{LETTER_SCORES[letter]}</span>
                 </div>
@@ -234,44 +273,39 @@ function Game({ gameMode }) {
                 type="text"
                 value={word}
                 onChange={(e) => setWord(e.target.value.toLowerCase())}
-                placeholder="Enter a word"
               />
-              <div className="coordinate-input">
-                <label>
-                  Row:
-                  <input
-                    type="number"
-                    value={row}
-                    onChange={(e) =>
-                      setRow(Number.isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))
-                    }
-                    min="0"
-                    max={BOARD_SIZE - 1}
-                  />
-                </label>
-                <label>
-                  Col:
-                  <input
-                    type="number"
-                    value={col}
-                    onChange={(e) =>
-                      setCol(Number.isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))
-                    }
-                    min="0"
-                    max={BOARD_SIZE - 1}
-                  />
-                </label>
-              </div>
-              <div className="direction-input">
-                <label>
-                  Direction:
-                  <select value={direction} onChange={(e) => setDirection(e.target.value)}>
-                    <option value="horizontal">Horizontal (→)</option>
-                    <option value="vertical">Vertical (↓)</option>
-                  </select>
-                </label>
-              </div>
-              <button onClick={handlePlaceWord} disabled={isValidating}>
+
+              <label>
+                Row:
+                <input
+                  type="number"
+                  value={row}
+                  min="0"
+                  max={BOARD_SIZE - 1}
+                  onChange={(e) => setRow(parseInt(e.target.value))}
+                />
+              </label>
+
+              <label>
+                Col:
+                <input
+                  type="number"
+                  value={col}
+                  min="0"
+                  max={BOARD_SIZE - 1}
+                  onChange={(e) => setCol(parseInt(e.target.value))}
+                />
+              </label>
+
+              <label>
+                Direction:
+                <select value={direction} onChange={(e) => setDirection(e.target.value)}>
+                  <option value="horizontal">Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </label>
+
+              <button onClick={handlePlaceWord} disabled={isValidating} className='place'>
                 {isValidating ? 'Checking...' : 'Place Word'}
               </button>
             </div>
